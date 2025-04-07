@@ -19,17 +19,17 @@ var (
 	ErrInvalidToken       = errors.New("invalid or expired token")
 )
 
-type UserService struct {
-	userRepo repository.UserRepository
+type userService struct {
+	repo repository.UserRepository
 }
 
-func NewUserService(userRepo repository.UserRepository) *UserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(repo repository.UserRepository) repository.UserService {
+	return &userService{repo: repo}
 }
 
-func (s *UserService) Register(user *models.User) error {
+func (s *userService) Register(user *models.User) error {
 	// Check if email already exists
-	existingUser, err := s.userRepo.FindByEmail(user.Email)
+	existingUser, err := s.repo.FindByEmail(user.Email)
 	if err != nil {
 		return err
 	}
@@ -46,11 +46,11 @@ func (s *UserService) Register(user *models.User) error {
 	user.IsVerified = false
 
 	// Save user
-	return s.userRepo.Create(user)
+	return s.repo.Create(user)
 }
 
-func (s *UserService) VerifyEmail(token string) error {
-	user, err := s.userRepo.FindByVerificationToken(token)
+func (s *userService) VerifyEmail(token string) error {
+	user, err := s.repo.FindByVerificationToken(token)
 	if err != nil {
 		return err
 	}
@@ -61,11 +61,11 @@ func (s *UserService) VerifyEmail(token string) error {
 	// Update user
 	user.IsVerified = true
 	user.VerificationToken = ""
-	return s.userRepo.Update(user)
+	return s.repo.Update(user)
 }
 
-func (s *UserService) Authenticate(email, password string) (*models.User, error) {
-	user, err := s.userRepo.FindByEmail(email)
+func (s *userService) Authenticate(email, password string) (*models.User, error) {
+	user, err := s.repo.FindByEmail(email)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +81,8 @@ func (s *UserService) Authenticate(email, password string) (*models.User, error)
 	return user, nil
 }
 
-func (s *UserService) GeneratePasswordResetToken(email string) (string, error) {
-	user, err := s.userRepo.FindByEmail(email)
+func (s *userService) GeneratePasswordResetToken(email string) (string, error) {
+	user, err := s.repo.FindByEmail(email)
 	if err != nil {
 		return "", err
 	}
@@ -102,15 +102,15 @@ func (s *UserService) GeneratePasswordResetToken(email string) (string, error) {
 	user.ResetTokenExpiry = &expiry
 
 	// Update user
-	if err := s.userRepo.Update(user); err != nil {
+	if err := s.repo.Update(user); err != nil {
 		return "", err
 	}
 
 	return resetToken, nil
 }
 
-func (s *UserService) ResetPassword(token, newPassword string) error {
-	user, err := s.userRepo.FindByResetToken(token)
+func (s *userService) ResetPassword(token, newPassword string) error {
+	user, err := s.repo.FindByResetToken(token)
 	if err != nil {
 		return err
 	}
@@ -119,18 +119,18 @@ func (s *UserService) ResetPassword(token, newPassword string) error {
 	}
 
 	// Update password and clear reset token
-	if err := s.userRepo.UpdatePassword(user.ID, newPassword); err != nil {
+	if err := s.repo.UpdatePassword(user.ID, newPassword); err != nil {
 		return err
 	}
 
 	// Clear reset token
 	user.ResetToken = ""
 	user.ResetTokenExpiry = nil
-	return s.userRepo.Update(user)
+	return s.repo.Update(user)
 }
 
-func (s *UserService) GetUserByID(id uint) (*models.User, error) {
-	user, err := s.userRepo.FindByID(id)
+func (s *userService) GetUserByID(id uint) (*models.User, error) {
+	user, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +140,8 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 	return user, nil
 }
 
-func (s *UserService) UpdateUser(user *models.User) error {
-	existingUser, err := s.userRepo.FindByID(user.ID)
+func (s *userService) UpdateUser(user *models.User) error {
+	existingUser, err := s.repo.FindByID(user.ID)
 	if err != nil {
 		return err
 	}
@@ -149,11 +149,11 @@ func (s *UserService) UpdateUser(user *models.User) error {
 		return ErrUserNotFound
 	}
 
-	return s.userRepo.Update(user)
+	return s.repo.Update(user)
 }
 
-func (s *UserService) DeleteUser(id uint) error {
-	existingUser, err := s.userRepo.FindByID(id)
+func (s *userService) DeleteUser(id uint) error {
+	existingUser, err := s.repo.FindByID(id)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (s *UserService) DeleteUser(id uint) error {
 		return ErrUserNotFound
 	}
 
-	return s.userRepo.Delete(id)
+	return s.repo.Delete(id)
 }
 
 // Helper function to generate random tokens

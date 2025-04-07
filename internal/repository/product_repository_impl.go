@@ -6,13 +6,14 @@ import (
 
 	"clothing-shop-api/internal/domain/models"
 	"clothing-shop-api/internal/domain/services"
+	"clothing-shop-api/internal/repository"
 )
 
 type productRepositoryImpl struct {
 	db *sql.DB
 }
 
-func NewProductRepository(db *sql.DB) ProductRepository {
+func NewProductRepository(db *sql.DB) repository.ProductRepository {
 	return &productRepositoryImpl{db: db}
 }
 

@@ -1,10 +1,9 @@
 package services
 
 import (
-	"errors"
-
 	"clothing-shop-api/internal/domain/models"
 	"clothing-shop-api/internal/repository"
+	"errors"
 )
 
 var (
@@ -52,88 +51,93 @@ type ProductResponse struct {
 	PrimaryImage    *models.ProductImage `json:"primary_image"`
 }
 
-func (s *ProductService) AddProduct(product *models.Product) error {
-	if product.Name == "" || product.Price <= 0 {
-		return errors.New("invalid product data")
+func (s *ProductService) CreateProduct(product *models.Product) error {
+	// Validate product data
+	if err := s.validateProduct(product); err != nil {
+		return err
 	}
+
+	// Check if category exists
+	category, err := s.categoryRepo.FindByID(product.CategoryID)
+	if err != nil {
+		return err
+	}
+	if category == nil {
+		return errors.New("category not found")
+	}
+
+	// Create product
 	return s.repo.Create(product)
 }
 
-func (s *ProductService) UpdateProduct(product *models.Product) error {
-	if product.ID == 0 || product.Name == "" || product.Price <= 0 {
-		return errors.New("invalid product data")
+func (s *ProductService) GetProduct(id uint) (*models.Product, error) {
+	product, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
 	}
+	if product == nil {
+		return nil, ErrProductNotFound
+	}
+	return product, nil
+}
+
+func (s *ProductService) ListProducts(filter ProductFilter) ([]*models.Product, int, error) {
+	return s.repo.FindAll(filter)
+}
+
+func (s *ProductService) UpdateProduct(product *models.Product) error {
+	// Validate product data
+	if err := s.validateProduct(product); err != nil {
+		return err
+	}
+
+	// Check if product exists
+	existing, err := s.repo.FindByID(product.ID)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return ErrProductNotFound
+	}
+
+	// Check if category exists
+	category, err := s.categoryRepo.FindByID(product.CategoryID)
+	if err != nil {
+		return err
+	}
+	if category == nil {
+		return errors.New("category not found")
+	}
+
 	return s.repo.Update(product)
 }
 
 func (s *ProductService) DeleteProduct(id uint) error {
-	if id == 0 {
-		return errors.New("invalid product ID")
+	// Check if product exists
+	product, err := s.repo.FindByID(id)
+	if err != nil {
+		return err
 	}
+	if product == nil {
+		return ErrProductNotFound
+	}
+
 	return s.repo.Delete(id)
 }
 
-func (s *ProductService) GetProductByID(id uint) (*models.Product, error) {
-	if id == 0 {
-		return nil, errors.New("invalid product ID")
+// Helper methods
+func (s *ProductService) validateProduct(product *models.Product) error {
+	if product.Name == "" {
+		return errors.New("product name is required")
 	}
-	return s.repo.FindByID(id)
-}
-
-func (s *ProductService) ListProducts(filter ProductFilter) ([]ProductResponse, int, error) {
-	if filter.Page <= 0 {
-		filter.Page = 1
+	if product.BasePrice <= 0 {
+		return errors.New("product price must be greater than zero")
 	}
-	if filter.PageSize <= 0 {
-		filter.PageSize = 10
+	if product.CategoryID == 0 {
+		return errors.New("product category is required")
 	}
-
-	products, total, err := s.repo.FindAll(filter)
-	if err != nil {
-		return nil, 0, err
+	if product.Weight <= 0 {
+		return errors.New("product weight must be greater than zero")
 	}
-
-	var response []ProductResponse
-	for _, product := range products {
-		// Get product variants
-		variants, err := s.variantRepo.FindByProductID(product.ID)
-		if err != nil {
-			continue
-		}
-
-		// Extract available sizes and colors
-		sizeMap := make(map[string]struct{})
-		colorMap := make(map[string]struct{})
-		for _, variant := range variants {
-			sizeMap[variant.Size] = struct{}{}
-			colorMap[variant.Color] = struct{}{}
-		}
-
-		var availableSizes []string
-		for size := range sizeMap {
-			availableSizes = append(availableSizes, size)
-		}
-
-		var availableColors []string
-		for color := range colorMap {
-			availableColors = append(availableColors, color)
-		}
-
-		// Get primary image
-		primaryImage, err := s.imageRepo.FindPrimaryByProductID(product.ID)
-		if err != nil {
-			continue
-		}
-
-		response = append(response, ProductResponse{
-			Product:         product,
-			AvailableSizes:  availableSizes,
-			AvailableColors: availableColors,
-			MinPrice:        product.MinPrice,
-			MaxPrice:        product.MaxPrice,
-			PrimaryImage:    primaryImage,
-		})
-	}
-
-	return response, total, nil
+	return nil
 }

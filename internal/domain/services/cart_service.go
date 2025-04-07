@@ -1,10 +1,9 @@
 package services
 
 import (
-	"errors"
-
 	"clothing-shop-api/internal/domain/models"
 	"clothing-shop-api/internal/repository"
+	"errors"
 )
 
 var (
