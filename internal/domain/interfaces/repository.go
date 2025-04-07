@@ -1,6 +1,17 @@
-package services
+package interfaces
 
 import "clothing-shop-api/internal/domain/models"
+
+// ProductFilter defines filter parameters for product queries
+type ProductFilter struct {
+	CategoryID *uint    `form:"category_id"`
+	MinPrice   *float64 `form:"min_price"`
+	MaxPrice   *float64 `form:"max_price"`
+	Search     string   `form:"search"`
+	SortBy     string   `form:"sort_by"`
+	Page       int      `form:"page"`
+	PageSize   int      `form:"page_size"`
+}
 
 type UserRepository interface {
 	Create(user *models.User) error
@@ -35,5 +46,13 @@ type CategoryRepository interface {
 	FindByID(id uint) (*models.Category, error)
 	FindAll() ([]*models.Category, error)
 	Update(category *models.Category) error
+	Delete(id uint) error
+}
+
+type ProductRepository interface {
+	Create(product *models.Product) error
+	FindByID(id uint) (*models.Product, error)
+	FindAll(filter ProductFilter) ([]*models.Product, int, error)
+	Update(product *models.Product) error
 	Delete(id uint) error
 }

@@ -1,28 +1,38 @@
 package repository
 
 import (
+	"clothing-shop-api/internal/domain/interfaces"
 	"clothing-shop-api/internal/domain/models"
-	"clothing-shop-api/internal/domain/services"
 	"database/sql"
 	"fmt"
 )
 
-type productRepositoryImpl struct {
+// ProductRepository defines the interface for product operations
+type ProductRepository interface {
+	Create(product *models.Product) error
+	FindByID(id uint) (*models.Product, error)
+	FindAll(filter interfaces.ProductFilter) ([]*models.Product, int, error)
+	Update(product *models.Product) error
+	Delete(id uint) error
+}
+
+type productRepository struct {
 	db *sql.DB
 }
 
-func NewProductRepository(db *sql.DB) services.ProductRepository {
-	return &productRepositoryImpl{db: db}
+func NewProductRepository(db *sql.DB) interfaces.ProductRepository {
+	return &productRepository{db: db}
 }
 
-func (r *productRepositoryImpl) Create(product *models.Product) error {
+func (r *productRepository) Create(product *models.Product) error {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %v", err)
 	}
 	defer func() {
 		if err != nil {
 			tx.Rollback()
+			return
 		}
 	}()
 
@@ -38,12 +48,12 @@ func (r *productRepositoryImpl) Create(product *models.Product) error {
 		product.BasePrice, product.Discount, product.Weight,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to insert product: %v", err)
 	}
 
 	productID, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get last insert ID: %v", err)
 	}
 	product.ID = uint(productID)
 
@@ -61,7 +71,25 @@ func (r *productRepositoryImpl) Create(product *models.Product) error {
 				variant.SKU, variant.Price, variant.Stock,
 			)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to insert product variant: %v", err)
+			}
+		}
+	}
+
+	// Insert images if any
+	if len(product.Images) > 0 {
+		imageQuery := `
+            INSERT INTO product_images (
+                product_id, url, is_primary, sort_order,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `
+		for _, image := range product.Images {
+			_, err := tx.Exec(imageQuery,
+				productID, image.URL, image.IsPrimary, image.SortOrder,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to insert product image: %v", err)
 			}
 		}
 	}
@@ -69,7 +97,7 @@ func (r *productRepositoryImpl) Create(product *models.Product) error {
 	return tx.Commit()
 }
 
-func (r *productRepositoryImpl) FindByID(id uint) (*models.Product, error) {
+func (r *productRepository) FindByID(id uint) (*models.Product, error) {
 	query := `
         SELECT 
             p.id, p.name, p.description, p.category_id, 
@@ -82,8 +110,7 @@ func (r *productRepositoryImpl) FindByID(id uint) (*models.Product, error) {
     `
 
 	product := &models.Product{}
-	category := &models.Category{}
-	product.Category = *category
+	product.Category = models.Category{}
 
 	var categoryParentID *uint
 
@@ -101,7 +128,7 @@ func (r *productRepositoryImpl) FindByID(id uint) (*models.Product, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query product: %v", err)
 	}
 
 	product.Category.ParentID = categoryParentID
@@ -109,21 +136,21 @@ func (r *productRepositoryImpl) FindByID(id uint) (*models.Product, error) {
 	// Get variants
 	variants, err := r.getProductVariants(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get product variants: %v", err)
 	}
 	product.Variants = variants
 
 	// Get images
 	images, err := r.getProductImages(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get product images: %v", err)
 	}
 	product.Images = images
 
 	return product, nil
 }
 
-func (r *productRepositoryImpl) FindAll(filter services.ProductFilter) ([]*models.Product, int, error) {
+func (r *productRepository) FindAll(filter interfaces.ProductFilter) ([]*models.Product, int, error) {
 	whereClause := "p.deleted_at IS NULL"
 	args := []interface{}{}
 
@@ -158,7 +185,7 @@ func (r *productRepositoryImpl) FindAll(filter services.ProductFilter) ([]*model
 	var total int
 	err := r.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to count products: %v", err)
 	}
 
 	// Build order by clause
@@ -188,7 +215,7 @@ func (r *productRepositoryImpl) FindAll(filter services.ProductFilter) ([]*model
             MIN(pv.price) as min_price, MAX(pv.price) as max_price
         FROM products p
         JOIN categories c ON p.category_id = c.id
-        LEFT JOIN product_variants pv ON p.id = pv.product_id 
+        LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.deleted_at IS NULL
         WHERE %s
         GROUP BY p.id
         ORDER BY %s
@@ -198,15 +225,14 @@ func (r *productRepositoryImpl) FindAll(filter services.ProductFilter) ([]*model
 	args = append(args, limit, offset)
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to query products: %v", err)
 	}
 	defer rows.Close()
 
 	products := []*models.Product{}
 	for rows.Next() {
 		product := &models.Product{}
-		category := &models.Category{}
-		product.Category = *category
+		product.Category = models.Category{}
 
 		var categoryParentID *uint
 		var minPrice, maxPrice float64
@@ -221,10 +247,12 @@ func (r *productRepositoryImpl) FindAll(filter services.ProductFilter) ([]*model
 			&categoryParentID, &minPrice, &maxPrice,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("failed to scan product row: %v", err)
 		}
 
 		product.Category.ParentID = categoryParentID
+
+		// Add the variant price range
 		product.MinPrice = minPrice
 		product.MaxPrice = maxPrice
 
@@ -234,7 +262,7 @@ func (r *productRepositoryImpl) FindAll(filter services.ProductFilter) ([]*model
 	return products, total, nil
 }
 
-func (r *productRepositoryImpl) Update(product *models.Product) error {
+func (r *productRepository) Update(product *models.Product) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -274,7 +302,7 @@ func (r *productRepositoryImpl) Update(product *models.Product) error {
 	return tx.Commit()
 }
 
-func (r *productRepositoryImpl) Delete(id uint) error {
+func (r *productRepository) Delete(id uint) error {
 	query := `
         UPDATE products 
         SET deleted_at = CURRENT_TIMESTAMP 
@@ -297,7 +325,7 @@ func (r *productRepositoryImpl) Delete(id uint) error {
 }
 
 // Helper methods
-func (r *productRepositoryImpl) getProductVariants(productID uint) ([]models.ProductVariant, error) {
+func (r *productRepository) getProductVariants(productID uint) ([]models.ProductVariant, error) {
 	query := `
         SELECT 
             id, product_id, size, color, sku, price, stock,
@@ -329,7 +357,7 @@ func (r *productRepositoryImpl) getProductVariants(productID uint) ([]models.Pro
 	return variants, nil
 }
 
-func (r *productRepositoryImpl) getProductImages(productID uint) ([]models.ProductImage, error) {
+func (r *productRepository) getProductImages(productID uint) ([]models.ProductImage, error) {
 	query := `
         SELECT 
             id, product_id, url, is_primary, sort_order,

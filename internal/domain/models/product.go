@@ -12,6 +12,8 @@ type Product struct {
 	Discount    float64    `json:"discount" gorm:"default:0;type:decimal(5,2)"`
 	Weight      float64    `json:"weight" gorm:"not null;comment:'Weight in grams'"`
 	Rating      float32    `json:"rating" gorm:"default:0;type:decimal(3,2)"`
+	MinPrice    float64    `json:"min_price"`
+	MaxPrice    float64    `json:"max_price"`
 	ReviewCount int        `json:"review_count" gorm:"default:0"`
 	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
