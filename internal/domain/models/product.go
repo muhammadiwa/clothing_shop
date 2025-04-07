@@ -27,6 +27,7 @@ type Product struct {
 type ProductVariant struct {
 	ID        uint       `json:"id" gorm:"primaryKey"`
 	ProductID uint       `json:"product_id"`
+	Product   *Product   `json:"product,omitempty"` // Add this field
 	Size      string     `json:"size"`
 	Color     string     `json:"color"`
 	SKU       string     `json:"sku" gorm:"unique"`
