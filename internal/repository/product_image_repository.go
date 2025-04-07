@@ -1,29 +1,20 @@
 package repository
 
 import (
-	"database/sql"
-
+	"clothing-shop-api/internal/domain/interfaces"
 	"clothing-shop-api/internal/domain/models"
+	"database/sql"
 )
 
-type ProductImageRepository interface {
-	Create(image *models.ProductImage) error
-	FindByID(id uint) (*models.ProductImage, error)
-	FindByProductID(productID uint) ([]models.ProductImage, error)
-	FindPrimaryByProductID(productID uint) (*models.ProductImage, error)
-	Delete(id uint) error
-	SetPrimary(id uint) error
-}
-
-type productImageRepositoryImpl struct {
+type productImageRepository struct {
 	db *sql.DB
 }
 
-func NewProductImageRepository(db *sql.DB) ProductImageRepository {
-	return &productImageRepositoryImpl{db: db}
+func NewProductImageRepository(db *sql.DB) interfaces.ProductImageRepository {
+	return &productImageRepository{db: db}
 }
 
-func (r *productImageRepositoryImpl) Create(image *models.ProductImage) error {
+func (r *productImageRepository) Create(image *models.ProductImage) error {
 	// Begin transaction
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -66,7 +57,7 @@ func (r *productImageRepositoryImpl) Create(image *models.ProductImage) error {
 	return tx.Commit()
 }
 
-func (r *productImageRepositoryImpl) FindByID(id uint) (*models.ProductImage, error) {
+func (r *productImageRepository) FindByID(id uint) (*models.ProductImage, error) {
 	query := `SELECT id, product_id, url, is_primary, sort_order, created_at, updated_at
               FROM product_images
               WHERE id = ?`
@@ -89,7 +80,7 @@ func (r *productImageRepositoryImpl) FindByID(id uint) (*models.ProductImage, er
 	return image, nil
 }
 
-func (r *productImageRepositoryImpl) FindByProductID(productID uint) ([]models.ProductImage, error) {
+func (r *productImageRepository) FindByProductID(productID uint) ([]models.ProductImage, error) {
 	query := `SELECT id, product_id, url, is_primary, sort_order, created_at, updated_at
               FROM product_images
               WHERE product_id = ?
@@ -117,7 +108,7 @@ func (r *productImageRepositoryImpl) FindByProductID(productID uint) ([]models.P
 	return images, nil
 }
 
-func (r *productImageRepositoryImpl) FindPrimaryByProductID(productID uint) (*models.ProductImage, error) {
+func (r *productImageRepository) FindPrimaryByProductID(productID uint) (*models.ProductImage, error) {
 	query := `SELECT id, product_id, url, is_primary, sort_order, created_at, updated_at
               FROM product_images
               WHERE product_id = ? AND is_primary = TRUE
@@ -146,13 +137,13 @@ func (r *productImageRepositoryImpl) FindPrimaryByProductID(productID uint) (*mo
 	return image, nil
 }
 
-func (r *productImageRepositoryImpl) Delete(id uint) error {
+func (r *productImageRepository) Delete(id uint) error {
 	query := `DELETE FROM product_images WHERE id = ?`
 	_, err := r.db.Exec(query, id)
 	return err
 }
 
-func (r *productImageRepositoryImpl) SetPrimary(id uint) error {
+func (r *productImageRepository) SetPrimary(id uint) error {
 	// Begin transaction
 	tx, err := r.db.Begin()
 	if err != nil {

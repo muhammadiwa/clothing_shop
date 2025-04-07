@@ -2,7 +2,7 @@ package services
 
 import (
 	"clothing-shop-api/internal/domain/models"
-	"clothing-shop-api/internal/repository"
+	"clothing-shop-api/internal/interfaces"
 	"errors"
 )
 
@@ -11,37 +11,6 @@ var (
 	ErrInvalidProduct  = errors.New("invalid product data")
 )
 
-type ProductService struct {
-	repo         repository.ProductRepository
-	categoryRepo repository.CategoryRepository
-	variantRepo  repository.ProductVariantRepository
-	imageRepo    repository.ProductImageRepository
-}
-
-func NewProductService(
-	repo repository.ProductRepository,
-	categoryRepo repository.CategoryRepository,
-	variantRepo repository.ProductVariantRepository,
-	imageRepo repository.ProductImageRepository,
-) *ProductService {
-	return &ProductService{
-		repo:         repo,
-		categoryRepo: categoryRepo,
-		variantRepo:  variantRepo,
-		imageRepo:    imageRepo,
-	}
-}
-
-type ProductFilter struct {
-	CategoryID *uint    `form:"category_id"`
-	MinPrice   *float64 `form:"min_price"`
-	MaxPrice   *float64 `form:"max_price"`
-	Search     string   `form:"search"`
-	SortBy     string   `form:"sort_by"` // name_asc, name_desc, price_asc, price_desc, newest
-	Page       int      `form:"page"`
-	PageSize   int      `form:"page_size"`
-}
-
 type ProductResponse struct {
 	*models.Product
 	AvailableSizes  []string             `json:"available_sizes"`
@@ -49,6 +18,27 @@ type ProductResponse struct {
 	MinPrice        float64              `json:"min_price"`
 	MaxPrice        float64              `json:"max_price"`
 	PrimaryImage    *models.ProductImage `json:"primary_image"`
+}
+
+type ProductService struct {
+	repo         interfaces.ProductRepository
+	categoryRepo interfaces.CategoryRepository
+	variantRepo  interfaces.ProductVariantRepository
+	imageRepo    interfaces.ProductImageRepository
+}
+
+func NewProductService(
+	repo interfaces.ProductRepository,
+	categoryRepo interfaces.CategoryRepository,
+	variantRepo interfaces.ProductVariantRepository,
+	imageRepo interfaces.ProductImageRepository,
+) *ProductService {
+	return &ProductService{
+		repo:         repo,
+		categoryRepo: categoryRepo,
+		variantRepo:  variantRepo,
+		imageRepo:    imageRepo,
+	}
 }
 
 func (s *ProductService) CreateProduct(product *models.Product) error {
@@ -67,10 +57,31 @@ func (s *ProductService) CreateProduct(product *models.Product) error {
 	}
 
 	// Create product
-	return s.repo.Create(product)
+	if err := s.repo.Create(product); err != nil {
+		return err
+	}
+
+	// Create variants if any
+	for _, variant := range product.Variants {
+		variant.ProductID = product.ID
+		if err := s.variantRepo.Create(&variant); err != nil {
+			return err
+		}
+	}
+
+	// Create images if any
+	for _, image := range product.Images {
+		image.ProductID = product.ID
+		if err := s.imageRepo.Create(&image); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (s *ProductService) GetProduct(id uint) (*models.Product, error) {
+func (s *ProductService) GetProduct(id uint) (*ProductResponse, error) {
+	// Get product with basic info
 	product, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -78,20 +89,84 @@ func (s *ProductService) GetProduct(id uint) (*models.Product, error) {
 	if product == nil {
 		return nil, ErrProductNotFound
 	}
-	return product, nil
+
+	// Get variants
+	variants, err := s.variantRepo.FindByProductID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get primary image
+	primaryImage, err := s.imageRepo.FindPrimaryByProductID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create response with additional info
+	response := &ProductResponse{
+		Product:      product,
+		PrimaryImage: primaryImage,
+	}
+
+	// Calculate price range and collect available sizes/colors
+	sizeMap := make(map[string]bool)
+	colorMap := make(map[string]bool)
+
+	if len(variants) > 0 {
+		response.MinPrice = variants[0].Price
+		response.MaxPrice = variants[0].Price
+
+		for _, variant := range variants {
+			if variant.Price < response.MinPrice {
+				response.MinPrice = variant.Price
+			}
+			if variant.Price > response.MaxPrice {
+				response.MaxPrice = variant.Price
+			}
+
+			if variant.Size != "" {
+				sizeMap[variant.Size] = true
+			}
+			if variant.Color != "" {
+				colorMap[variant.Color] = true
+			}
+		}
+	}
+
+	// Convert maps to slices
+	for size := range sizeMap {
+		response.AvailableSizes = append(response.AvailableSizes, size)
+	}
+	for color := range colorMap {
+		response.AvailableColors = append(response.AvailableColors, color)
+	}
+
+	return response, nil
 }
 
-func (s *ProductService) ListProducts(filter ProductFilter) ([]*models.Product, int, error) {
-	return s.repo.FindAll(filter)
+func (s *ProductService) ListProducts(filter interfaces.ProductFilter) ([]*ProductResponse, int, error) {
+	products, total, err := s.repo.FindAll(filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	responses := make([]*ProductResponse, len(products))
+	for i, product := range products {
+		response, err := s.GetProduct(product.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		responses[i] = response
+	}
+
+	return responses, total, nil
 }
 
 func (s *ProductService) UpdateProduct(product *models.Product) error {
-	// Validate product data
 	if err := s.validateProduct(product); err != nil {
 		return err
 	}
 
-	// Check if product exists
 	existing, err := s.repo.FindByID(product.ID)
 	if err != nil {
 		return err
@@ -100,7 +175,6 @@ func (s *ProductService) UpdateProduct(product *models.Product) error {
 		return ErrProductNotFound
 	}
 
-	// Check if category exists
 	category, err := s.categoryRepo.FindByID(product.CategoryID)
 	if err != nil {
 		return err
@@ -109,11 +183,39 @@ func (s *ProductService) UpdateProduct(product *models.Product) error {
 		return errors.New("category not found")
 	}
 
-	return s.repo.Update(product)
+	if err := s.repo.Update(product); err != nil {
+		return err
+	}
+
+	// Update variants
+	for _, variant := range product.Variants {
+		variant.ProductID = product.ID
+		if variant.ID == 0 {
+			if err := s.variantRepo.Create(&variant); err != nil {
+				return err
+			}
+		} else {
+			if err := s.variantRepo.Update(&variant); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Update images
+	for _, image := range product.Images {
+		image.ProductID = product.ID
+		if image.ID == 0 {
+			if err := s.imageRepo.Create(&image); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
 }
 
 func (s *ProductService) DeleteProduct(id uint) error {
-	// Check if product exists
 	product, err := s.repo.FindByID(id)
 	if err != nil {
 		return err

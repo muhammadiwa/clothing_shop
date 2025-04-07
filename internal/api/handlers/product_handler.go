@@ -6,6 +6,7 @@ import (
 
 	"clothing-shop-api/internal/domain/models"
 	"clothing-shop-api/internal/domain/services"
+	"clothing-shop-api/internal/interfaces"
 
 	"github.com/gin-gonic/gin"
 )
@@ -89,7 +90,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
-	var filter services.ProductFilter
+	var filter interfaces.ProductFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

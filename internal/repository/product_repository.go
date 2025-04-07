@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"clothing-shop-api/internal/domain/interfaces"
 	"clothing-shop-api/internal/domain/models"
+	"clothing-shop-api/internal/interfaces"
 	"database/sql"
 	"fmt"
 )

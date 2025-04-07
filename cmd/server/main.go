@@ -45,32 +45,16 @@ func main() {
 	db := database.GetDB()
 
 	// Set up repositories
-	userRepo := repository.NewUserRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
 	variantRepo := repository.NewProductVariantRepository(db)
 	imageRepo := repository.NewProductImageRepository(db)
-	cartRepo := repository.NewCartRepository(db)
-	wishlistRepo := repository.NewWishlistRepository(db)
-	orderRepo := repository.NewOrderRepository(db)
-	paymentRepo := repository.NewPaymentRepository(db)
 
 	// Set up services using interfaces
-	emailService := services.NewEmailService(cfg)
-	userService := services.NewUserService(userRepo)
 	productService := services.NewProductService(productRepo, categoryRepo, variantRepo, imageRepo)
-	cartService := services.NewCartService(cartRepo, variantRepo)
-	wishlistService := services.NewWishlistService(wishlistRepo, productRepo)
-	orderService := services.NewOrderService(orderRepo, cartRepo, variantRepo)
-	paymentService := services.NewPaymentService(paymentRepo, orderRepo)
 
 	// Set up handlers
-	authHandler := handlers.NewAuthHandler(userService, emailService)
 	productHandler := handlers.NewProductHandler(productService)
-	cartHandler := handlers.NewCartHandler(cartService)
-	wishlistHandler := handlers.NewWishlistHandler(wishlistService)
-	orderHandler := handlers.NewOrderHandler(orderService, paymentService)
-	paymentHandler := handlers.NewPaymentHandler(paymentService)
 
 	// Initialize router
 	router := gin.Default()
@@ -101,29 +85,29 @@ func main() {
 	customer.Use(middleware.AuthMiddleware())
 
 	// Cart
-	cart := customer.Group("/cart")
-	cart.GET("", cartHandler.GetCart)
-	cart.POST("", cartHandler.AddToCart)
-	cart.PUT("/:id", cartHandler.UpdateCartItem)
-	cart.DELETE("/:id", cartHandler.RemoveFromCart)
+	// cart := customer.Group("/cart")
+	// cart.GET("", cartHandler.GetCart)
+	// cart.POST("", cartHandler.AddToCart)
+	// cart.PUT("/:id", cartHandler.UpdateCartItem)
+	// cart.DELETE("/:id", cartHandler.RemoveFromCart)
 
 	// Wishlist
-	wishlist := customer.Group("/wishlist")
-	wishlist.GET("", wishlistHandler.GetWishlist)
-	wishlist.POST("", wishlistHandler.AddToWishlist)
-	wishlist.DELETE("/:id", wishlistHandler.RemoveFromWishlist)
+	// wishlist := customer.Group("/wishlist")
+	// wishlist.GET("", wishlistHandler.GetWishlist)
+	// wishlist.POST("", wishlistHandler.AddToWishlist)
+	// wishlist.DELETE("/:id", wishlistHandler.RemoveFromWishlist)
 
 	// Orders
-	orders := customer.Group("/orders")
-	orders.POST("", orderHandler.CreateOrder)
-	orders.GET("", orderHandler.GetUserOrders)
-	orders.GET("/:id", orderHandler.GetOrderDetails)
+	// orders := customer.Group("/orders")
+	// orders.POST("", orderHandler.CreateOrder)
+	// orders.GET("", orderHandler.GetUserOrders)
+	// orders.GET("/:id", orderHandler.GetOrderDetails)
 
 	// Payments
-	payments := customer.Group("/payments")
-	payments.POST("/:order_id", paymentHandler.CreatePayment)
-	payments.GET("/:id", paymentHandler.GetPaymentStatus)
-	payments.POST("/notification", paymentHandler.HandleNotification)
+	// payments := customer.Group("/payments")
+	// payments.POST("/:order_id", paymentHandler.CreatePayment)
+	// payments.GET("/:id", paymentHandler.GetPaymentStatus)
+	// payments.POST("/notification", paymentHandler.HandleNotification)
 
 	// Protected routes - Admin
 	admin := v1.Group("/admin")

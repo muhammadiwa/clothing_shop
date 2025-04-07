@@ -13,17 +13,7 @@ type ProductFilter struct {
 	PageSize   int      `form:"page_size"`
 }
 
-// ProductResponse defines the API response structure for products
-type ProductResponse struct {
-	*models.Product
-	AvailableSizes  []string             `json:"available_sizes"`
-	AvailableColors []string             `json:"available_colors"`
-	MinPrice        float64              `json:"min_price"`
-	MaxPrice        float64              `json:"max_price"`
-	PrimaryImage    *models.ProductImage `json:"primary_image"`
-}
-
-// Repository interfaces
+// ProductRepository interface
 type ProductRepository interface {
 	Create(product *models.Product) error
 	FindByID(id uint) (*models.Product, error)
@@ -32,6 +22,7 @@ type ProductRepository interface {
 	Delete(id uint) error
 }
 
+// CategoryRepository interface
 type CategoryRepository interface {
 	Create(category *models.Category) error
 	FindByID(id uint) (*models.Category, error)
@@ -40,6 +31,7 @@ type CategoryRepository interface {
 	Delete(id uint) error
 }
 
+// ProductVariantRepository interface
 type ProductVariantRepository interface {
 	Create(variant *models.ProductVariant) error
 	FindByID(id uint) (*models.ProductVariant, error)
@@ -49,6 +41,7 @@ type ProductVariantRepository interface {
 	UpdateStock(id uint, quantity int) error
 }
 
+// ProductImageRepository interface
 type ProductImageRepository interface {
 	Create(image *models.ProductImage) error
 	FindByID(id uint) (*models.ProductImage, error)
