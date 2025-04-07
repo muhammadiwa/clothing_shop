@@ -1,8 +1,8 @@
 package services
 
 import (
+	"clothing-shop-api/internal/domain/interfaces"
 	"clothing-shop-api/internal/domain/models"
-	"clothing-shop-api/internal/repository"
 	"errors"
 )
 
@@ -12,13 +12,13 @@ var (
 )
 
 type CartService struct {
-	cartRepo    repository.CartRepository
-	variantRepo repository.ProductVariantRepository
+	cartRepo    interfaces.CartRepository
+	variantRepo interfaces.ProductVariantRepository
 }
 
 func NewCartService(
-	cartRepo repository.CartRepository,
-	variantRepo repository.ProductVariantRepository,
+	cartRepo interfaces.CartRepository,
+	variantRepo interfaces.ProductVariantRepository,
 ) *CartService {
 	return &CartService{
 		cartRepo:    cartRepo,

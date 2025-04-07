@@ -56,3 +56,23 @@ type ProductRepository interface {
 	Update(product *models.Product) error
 	Delete(id uint) error
 }
+
+// CartRepository defines cart operations
+type CartRepository interface {
+	AddItem(cart *models.Cart) error
+	UpdateItem(cart *models.Cart) error
+	RemoveItem(id uint) error
+	GetUserCart(userID uint) ([]models.Cart, error)
+	GetCartItem(id uint) (*models.Cart, error)
+	ClearCart(userID uint) error
+}
+
+// ProductVariantRepository defines product variant operations
+type ProductVariantRepository interface {
+	FindByID(id uint) (*models.ProductVariant, error)
+	Create(variant *models.ProductVariant) error
+	Update(variant *models.ProductVariant) error
+	Delete(id uint) error
+	FindByProductID(productID uint) ([]models.ProductVariant, error)
+	UpdateStock(id uint, quantity int) error
+}
