@@ -54,12 +54,13 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			count = 1
 		} else {
 			// Increment count
-			count, err = rl.redisClient.Incr(ctx, key).Result()
+			countInt64, err := rl.redisClient.Incr(ctx, key).Result()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Rate limiting error"})
 				c.Abort()
 				return
 			}
+			count = int(countInt64)
 		}
 
 		// Get TTL

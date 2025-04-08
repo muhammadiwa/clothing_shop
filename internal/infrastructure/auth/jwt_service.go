@@ -36,7 +36,7 @@ type jwtService struct {
 }
 
 // NewJWTService creates a new JWTService instance
-func NewJWTService(accessSecret, refreshSecret, resetSecret string, accessExpiry, refreshExpiry, resetExp refreshSecret, resetSecret string, accessExpiry, refreshExpiry, resetExpiry time.Duration) JWTService {
+func NewJWTService(accessSecret, refreshSecret, resetSecret string, accessExpiry, refreshExpiry, resetExpiry time.Duration) JWTService {
 	return &jwtService{
 		accessSecret:  accessSecret,
 		refreshSecret: refreshSecret,

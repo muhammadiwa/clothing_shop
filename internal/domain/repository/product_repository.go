@@ -59,8 +59,6 @@ type ReviewRepository interface {
 	GetByProductID(ctx context.Context, productID uint, offset, limit int) ([]*entity.Review, int64, error)
 	GetByUserID(ctx context.Context, userID uint, offset, limit int) ([]*entity.Review, int64, error)
 	Update(ctx context.Context, review *entity.Review) error
-	Delete(ctx context.Context,  error)
-	Update(ctx context.Context, review *entity.Review) error
 	Delete(ctx context.Context, id uint) error
 	GetAverageRatingByProductID(ctx context.Context, productID uint) (float64, error)
 }
