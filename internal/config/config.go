@@ -1,124 +1,142 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
-
-	"github.com/joho/godotenv"
+	"time"
 )
 
+// Config holds all configuration for the application
 type Config struct {
-	// Server
-	ServerPort string
-	AppURL     string
-
-	// Database
-	DatabaseURL  string
-	DatabaseName string
-
-	// JWT
-	JWTSecret      string
-	JWTExpireHours int
-
-	// Email
-	SMTPHost      string
-	SMTPPort      int
-	SMTPUsername  string
-	SMTPPassword  string
-	SMTPFromEmail string
-	SMTPFromName  string
-
-	// RajaOngkir
-	RajaOngkirAPIKey  string
-	RajaOngkirBaseURL string
-
-	// Midtrans
-	MidtransServerKey   string
-	MidtransClientKey   string
-	MidtransEnvironment string
-
-	// File Storage
-	StorageDriver string
-	StoragePath   string
-
-	// Debug and Environment
-	Debug      bool
-	Production bool
-
-	// Admin
-	AdminEmail    string
-	AdminPassword string
+	Server struct {
+		Port int
+		Mode string
+	}
+	Database struct {
+		Host     string
+		Port     int
+		User     string
+		Password string
+		Name     string
+	}
+	Redis struct {
+		Host     string
+		Port     int
+		Password string
+		DB       int
+	}
+	JWT struct {
+		Secret        string
+		AccessExpiry  time.Duration
+		RefreshExpiry time.Duration
+	}
+	RateLimit struct {
+		Requests int
+		Duration time.Duration
+	}
+	RajaOngkir struct {
+		APIKey string
+		URL    string
+	}
+	Midtrans struct {
+		ServerKey      string
+		ClientKey      string
+		Environment    string
+		PaymentWebhook string
+	}
+	SMTP struct {
+		Host     string
+		Port     int
+		Username string
+		Password string
+		From     string
+	}
+	Storage struct {
+		Type      string // local, s3, etc.
+		LocalPath string
+		S3Bucket  string
+		S3Region  string
+	}
 }
 
-var config *Config
+// NewConfig creates a new Config instance
+func NewConfig() *Config {
+	cfg := &Config{}
 
-func LoadConfig() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: .env file not found, using environment variables")
-	}
+	// Server configuration
+	cfg.Server.Port = getEnvAsInt("SERVER_PORT", 8080)
+	cfg.Server.Mode = getEnvAsString("SERVER_MODE", "development")
 
-	debug, _ := strconv.ParseBool(getEnv("DEBUG", "false"))
-	production, _ := strconv.ParseBool(getEnv("PRODUCTION", "false"))
-	smtpPort, _ := strconv.Atoi(getEnv("SMTP_PORT", "587"))
-	jwtExpireHours, _ := strconv.Atoi(getEnv("JWT_EXPIRE_HOURS", "24"))
+	// Database configuration
+	cfg.Database.Host = getEnvAsString("DB_HOST", "localhost")
+	cfg.Database.Port = getEnvAsInt("DB_PORT", 5432)
+	cfg.Database.User = getEnvAsString("DB_USER", "postgres")
+	cfg.Database.Password = getEnvAsString("DB_PASSWORD", "postgres")
+	cfg.Database.Name = getEnvAsString("DB_NAME", "fashion_shop")
 
-	config = &Config{
-		// Server
-		ServerPort: getEnv("PORT", "8080"),
-		AppURL:     getEnv("APP_URL", "http://localhost:8080"),
+	// Redis configuration
+	cfg.Redis.Host = getEnvAsString("REDIS_HOST", "localhost")
+	cfg.Redis.Port = getEnvAsInt("REDIS_PORT", 6379)
+	cfg.Redis.Password = getEnvAsString("REDIS_PASSWORD", "")
+	cfg.Redis.DB = getEnvAsInt("REDIS_DB", 0)
 
-		// Database
-		DatabaseURL:  getEnv("DATABASE_URL", "mysql://username:password@tcp(localhost:3306)/clothing_shop"),
-		DatabaseName: getEnv("DATABASE_NAME", "clothing_shop"),
+	// JWT configuration
+	cfg.JWT.Secret = getEnvAsString("JWT_SECRET", "your-secret-key")
+	cfg.JWT.AccessExpiry = getEnvAsDuration("JWT_ACCESS_EXPIRY", 15*time.Minute)
+	cfg.JWT.RefreshExpiry = getEnvAsDuration("JWT_REFRESH_EXPIRY", 7*24*time.Hour)
 
-		// JWT
-		JWTSecret:      getEnv("JWT_SECRET", "your_jwt_secret"),
-		JWTExpireHours: jwtExpireHours,
+	// Rate limiting configuration
+	cfg.RateLimit.Requests = getEnvAsInt("RATE_LIMIT_REQUESTS", 100)
+	cfg.RateLimit.Duration = getEnvAsDuration("RATE_LIMIT_DURATION", time.Minute)
 
-		// Email
-		SMTPHost:      getEnv("SMTP_HOST", "smtp.gmail.com"),
-		SMTPPort:      smtpPort,
-		SMTPUsername:  getEnv("SMTP_USERNAME", ""),
-		SMTPPassword:  getEnv("SMTP_PASSWORD", ""),
-		SMTPFromEmail: getEnv("SMTP_FROM_EMAIL", "noreply@example.com"),
-		SMTPFromName:  getEnv("SMTP_FROM_NAME", "Clothing Shop"),
+	// RajaOngkir configuration
+	cfg.RajaOngkir.APIKey = getEnvAsString("RAJAONGKIR_API_KEY", "")
+	cfg.RajaOngkir.URL = getEnvAsString("RAJAONGKIR_URL", "https://api.rajaongkir.com/starter")
 
-		// RajaOngkir
-		RajaOngkirAPIKey:  getEnv("RAJAONGKIR_API_KEY", ""),
-		RajaOngkirBaseURL: getEnv("RAJAONGKIR_BASE_URL", "https://api.rajaongkir.com/starter"),
+	// Midtrans configuration
+	cfg.Midtrans.ServerKey = getEnvAsString("MIDTRANS_SERVER_KEY", "")
+	cfg.Midtrans.ClientKey = getEnvAsString("MIDTRANS_CLIENT_KEY", "")
+	cfg.Midtrans.Environment = getEnvAsString("MIDTRANS_ENVIRONMENT", "sandbox")
+	cfg.Midtrans.PaymentWebhook = getEnvAsString("MIDTRANS_PAYMENT_WEBHOOK", "/api/v1/payments/webhook")
 
-		// Midtrans
-		MidtransServerKey:   getEnv("MIDTRANS_SERVER_KEY", ""),
-		MidtransClientKey:   getEnv("MIDTRANS_CLIENT_KEY", ""),
-		MidtransEnvironment: getEnv("MIDTRANS_ENVIRONMENT", "sandbox"),
+	// SMTP configuration
+	cfg.SMTP.Host = getEnvAsString("SMTP_HOST", "")
+	cfg.SMTP.Port = getEnvAsInt("SMTP_PORT", 587)
+	cfg.SMTP.Username = getEnvAsString("SMTP_USERNAME", "")
+	cfg.SMTP.Password = getEnvAsString("SMTP_PASSWORD", "")
+	cfg.SMTP.From = getEnvAsString("SMTP_FROM", "noreply@fashionshop.com")
 
-		// File Storage
-		StorageDriver: getEnv("STORAGE_DRIVER", "local"),
-		StoragePath:   getEnv("STORAGE_PATH", "./uploads"),
+	// Storage configuration
+	cfg.Storage.Type = getEnvAsString("STORAGE_TYPE", "local")
+	cfg.Storage.LocalPath = getEnvAsString("STORAGE_LOCAL_PATH", "./uploads")
+	cfg.Storage.S3Bucket = getEnvAsString("STORAGE_S3_BUCKET", "")
+	cfg.Storage.S3Region = getEnvAsString("STORAGE_S3_REGION", "")
 
-		// Debug and Environment
-		Debug:      debug,
-		Production: production,
-
-		// Admin
-		AdminEmail:    getEnv("ADMIN_EMAIL", "admin@example.com"),
-		AdminPassword: getEnv("ADMIN_PASSWORD", "admin_password"),
-	}
-
-	return config, nil
+	return cfg
 }
 
-func GetConfig() *Config {
-	if config == nil {
-		config, _ = LoadConfig()
-	}
-	return config
-}
-
-func getEnv(key, fallback string) string {
+// Helper functions to get environment variables
+func getEnvAsString(key, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
-	return fallback
+	return defaultValue
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	if value, exists := os.LookupEnv(key); exists {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
+	if value, exists := os.LookupEnv(key); exists {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
+		}
+	}
+	return defaultValue
 }

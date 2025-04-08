@@ -3,25 +3,15 @@ package models
 import "time"
 
 type Product struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	Name        string     `json:"name" gorm:"not null"`
-	Description string     `json:"description"`
-	CategoryID  uint       `json:"category_id"`
-	Category    Category   `json:"category" gorm:"foreignKey:CategoryID"`
-	BasePrice   float64    `json:"base_price" gorm:"not null;type:decimal(12,2)"`
-	Discount    float64    `json:"discount" gorm:"default:0;type:decimal(5,2)"`
-	Weight      float64    `json:"weight" gorm:"not null;comment:'Weight in grams'"`
-	Rating      float32    `json:"rating" gorm:"default:0;type:decimal(3,2)"`
-	MinPrice    float64    `json:"min_price"`
-	MaxPrice    float64    `json:"max_price"`
-	ReviewCount int        `json:"review_count" gorm:"default:0"`
-	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
-	DeletedAt   *time.Time `json:"-" gorm:"index"`
-
-	Variants []ProductVariant `json:"variants"`
-	Images   []ProductImage   `json:"images"`
-	Reviews  []ProductReview  `json:"reviews,omitempty" gorm:"foreignKey:ProductID"`
+	ID          string    `json:"id" gorm:"primaryKey"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `json:"price"`
+	CategoryID  string    `json:"category_id"`
+	Category    Category  `json:"category"`
+	Stock       int       `json:"stock"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ProductVariant struct {
@@ -57,17 +47,4 @@ type ProductReview struct {
 	Comment   string    `json:"comment"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-}
-
-type Category struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	Name        string     `json:"name" gorm:"not null"`
-	Slug        string     `json:"slug" gorm:"unique;not null"`
-	Description string     `json:"description"`
-	ParentID    *uint      `json:"parent_id"`
-	Parent      *Category  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
-	Children    []Category `json:"children,omitempty" gorm:"foreignKey:ParentID"`
-	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
-	DeletedAt   *time.Time `json:"-" gorm:"index"`
 }

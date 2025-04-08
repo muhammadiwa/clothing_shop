@@ -11,15 +11,6 @@ var (
 	ErrInvalidProduct  = errors.New("invalid product data")
 )
 
-type ProductResponse struct {
-	*models.Product
-	AvailableSizes  []string             `json:"available_sizes"`
-	AvailableColors []string             `json:"available_colors"`
-	MinPrice        float64              `json:"min_price"`
-	MaxPrice        float64              `json:"max_price"`
-	PrimaryImage    *models.ProductImage `json:"primary_image"`
-}
-
 type ProductService struct {
 	repo         interfaces.ProductRepository
 	categoryRepo interfaces.CategoryRepository
@@ -80,7 +71,8 @@ func (s *ProductService) CreateProduct(product *models.Product) error {
 	return nil
 }
 
-func (s *ProductService) GetProduct(id uint) (*ProductResponse, error) {
+// Ubah return type ke interfaces.ProductResponse
+func (s *ProductService) GetProduct(id uint) (*interfaces.ProductResponse, error) {
 	// Get product with basic info
 	product, err := s.repo.FindByID(id)
 	if err != nil {
@@ -103,7 +95,7 @@ func (s *ProductService) GetProduct(id uint) (*ProductResponse, error) {
 	}
 
 	// Create response with additional info
-	response := &ProductResponse{
+	response := &interfaces.ProductResponse{
 		Product:      product,
 		PrimaryImage: primaryImage,
 	}
@@ -144,13 +136,13 @@ func (s *ProductService) GetProduct(id uint) (*ProductResponse, error) {
 	return response, nil
 }
 
-func (s *ProductService) ListProducts(filter interfaces.ProductFilter) ([]*ProductResponse, int, error) {
+func (s *ProductService) ListProducts(filter interfaces.ProductFilter) ([]*interfaces.ProductResponse, int, error) {
 	products, total, err := s.repo.FindAll(filter)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	responses := make([]*ProductResponse, len(products))
+	responses := make([]*interfaces.ProductResponse, len(products))
 	for i, product := range products {
 		response, err := s.GetProduct(product.ID)
 		if err != nil {

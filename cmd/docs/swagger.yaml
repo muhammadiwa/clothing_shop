@@ -1,0 +1,797 @@
+openapi: 3.0.0
+info:
+  title: Fashion Shop API
+  description: API for Fashion Shop e-commerce application
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+tags:
+  - name: Auth
+    description: Authentication operations
+  - name: Users
+    description: User operations
+  - name: Products
+    description: Product operations
+  - name: Categories
+    description: Category operations
+  - name: Cart
+    description: Shopping cart operations
+  - name: Wishlist
+    description: Wishlist operations
+  - name: Orders
+    description: Order operations
+  - name: Payments
+    description: Payment operations
+  - name: Shipping
+    description: Shipping operations
+  - name: Reviews
+    description: Review operations
+  - name: Notifications
+    description: Notification operations
+  - name: Admin
+    description: Admin operations
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+                - phone
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                name:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Invalid input
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  token_type:
+                    type: string
+        '401':
+          description: Invalid credentials
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+        '401':
+          description: Invalid refresh token
+
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Password reset email sent
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - new_password
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password reset successfully
+        '400':
+          description: Invalid token or password
+
+  /user/profile:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - phone
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+        '401':
+          description: Unauthorized
+
+  /user/password:
+    put:
+      tags:
+        - Users
+      summary: Change password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - old_password
+                - new_password
+              properties:
+                old_password:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password changed successfully
+        '400':
+          description: Invalid old password
+        '401':
+          description: Unauthorized
+
+  /user/logout:
+    post:
+      tags:
+        - Users
+      summary: Logout user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+        '401':
+          description: Unauthorized
+
+  /user/addresses:
+    get:
+      tags:
+        - Users
+      summary: Get user addresses
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User addresses
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Users
+      summary: Create address
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+      responses:
+        '201':
+          description: Address created successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+
+  /user/addresses/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get address by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Address
+        '401':
+          description: Unauthorized
+        '404':
+          description: Address not found
+    put:
+      tags:
+        - Users
+      summary: Update address
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+      responses:
+        '200':
+          description: Address updated successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Address not found
+    delete:
+      tags:
+        - Users
+      summary: Delete address
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Address deleted successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Address not found
+
+  /user/addresses/{id}/default:
+    put:
+      tags:
+        - Users
+      summary: Set default address
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Default address set successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Address not found
+
+  /user/addresses/default:
+    get:
+      tags:
+        - Users
+      summary: Get default address
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Default address
+        '401':
+          description: Unauthorized
+        '404':
+          description: Default address not found
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: List products
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: size
+          in: query
+          schema:
+            type: string
+        - name: color
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, price_asc, price_desc, rating]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of products
+
+  /products/search:
+    get:
+      tags:
+        - Products
+      summary: Search products
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: size
+          in: query
+          schema:
+            type: string
+        - name: color
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, price_asc, price_desc, rating]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Search results
+
+  /products/best-sellers:
+    get:
+      tags:
+        - Products
+      summary: Get best selling products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of best selling products
+
+  /products/new-arrivals:
+    get:
+      tags:
+        - Products
+      summary: Get new arrival products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of new arrival products
+
+  /products/top-rated:
+    get:
+      tags:
+        - Products
+      summary: Get top rated products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of top rated products
+
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product details
+        '404':
+          description: Product not found
+
+  /products/slug/{slug}:
+    get:
+      tags:
+        - Products
+      summary: Get product by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product details
+        '404':
+          description: Product not found
+
+  /products/{id}/reviews:
+    get:
+      tags:
+        - Products
+      summary: Get product reviews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Product reviews
+        '404':
+          description: Product not found
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: List categories
+      parameters:
+        - name: parent_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of categories
+
+  /categories/{id}:
+    get:
+      tags:
+        - Categories
+      summary: Get category by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Category details
+        '404':
+          description: Category not found
+
+  /categories/slug/{slug}:
+    get:
+      tags:
+        - Categories
+      summary: Get category by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category details
+        '404':
+          description: Category not found
+
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Get user's cart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's cart
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Cart
+      summary: Clear cart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cart cleared successfully
+        '401':
+          description: Unauthorized
+
+  /cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Add item to cart
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - variant_id
+                - quantity
+              properties:
+                product_id:
+                  type: integer
+                variant_id:
+                  type: integer
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Item added to cart successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+
+  /cart/items/{id}:
+    put:
+      tags:
+        - Cart
+      summary: Update cart item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Cart item updated successfully
+        '400':
+          description: Invalid input
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cart item not found
+    delete:
+      tags:
+        - Cart
+      summary: Remove item from cart
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Item removed from cart successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cart item not found
+
+  /wishlist:
+    get:
+      tags:
+        - Wishlist
+      summary: Get user's wishlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: User's wishlist
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Wishlist
+      summary: Add product to wishlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+              properties:
